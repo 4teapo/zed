@@ -4506,6 +4506,7 @@ impl Editor {
             this.change_selections(Some(Autoscroll::fit()), window, cx, |s| {
                 s.select(new_selections)
             });
+            this.trigger_completion_on_input("\n", false, window, cx);
             this.refresh_inline_completion(true, false, window, cx);
         });
     }
