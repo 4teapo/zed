@@ -1020,6 +1020,7 @@ pub struct Editor {
     pub diagnostics_max_severity: DiagnosticSeverity,
     active_diagnostics: ActiveDiagnostic,
     show_inline_diagnostics: bool,
+    inline_diagnostic_newline_replacement: Option<String>,
     inline_diagnostics_update: Task<()>,
     inline_diagnostics_enabled: bool,
     diagnostics_enabled: bool,
@@ -2024,6 +2025,11 @@ impl Editor {
             ime_transaction: None,
             active_diagnostics: ActiveDiagnostic::None,
             show_inline_diagnostics: ProjectSettings::get_global(cx).diagnostics.inline.enabled,
+            inline_diagnostic_newline_replacement: ProjectSettings::get_global(cx)
+                .diagnostics
+                .inline
+                .replace_newlines_with
+                .clone(),
             inline_diagnostics_update: Task::ready(()),
             inline_diagnostics: Vec::new(),
             soft_wrap_mode_override,
@@ -16728,6 +16734,8 @@ impl Editor {
         } else {
             None
         };
+
+        let newline_replacement = self.inline_diagnostic_newline_replacement.clone();
         self.inline_diagnostics_update = cx.spawn_in(window, async move |editor, cx| {
             if let Some(debounce) = debounce {
                 cx.background_executor().timer(debounce).await;
@@ -16744,15 +16752,16 @@ impl Editor {
                 .background_spawn(async move {
                     let mut inline_diagnostics = Vec::<(Anchor, InlineDiagnostic)>::new();
                     for diagnostic_entry in snapshot.diagnostics_in_range(0..snapshot.len()) {
-                        let message = diagnostic_entry
-                            .diagnostic
-                            .message
-                            .split_once('\n')
-                            .map(|(line, _)| line)
-                            .map(SharedString::new)
-                            .unwrap_or_else(|| {
-                                SharedString::from(diagnostic_entry.diagnostic.message)
-                            });
+                        let message = diagnostic_entry.diagnostic.message.map(|s| {
+                            if let Some(ref replacement) = newline_replacement {
+                                SharedString::new(s.replace('\n', replacement))
+                            } else {
+                                s.split_once('\n')
+                                    .map(|(line, _)| line)
+                                    .map(SharedString::new)
+                                    .unwrap_or_else(|| SharedString::from(s))
+                            }
+                        });
                         let start_anchor = snapshot.anchor_before(diagnostic_entry.range.start);
                         let (Ok(i) | Err(i)) = inline_diagnostics
                             .binary_search_by(|(probe, _)| probe.cmp(&start_anchor, &snapshot));
@@ -19984,9 +19993,14 @@ impl Editor {
 
         if self.mode.is_full() {
             let show_inline_diagnostics = project_settings.diagnostics.inline.enabled;
+            let replace_newlines_with = &project_settings.diagnostics.inline.replace_newlines_with;
             let inline_blame_enabled = project_settings.git.inline_blame_enabled();
-            if self.show_inline_diagnostics != show_inline_diagnostics {
+
+            if self.show_inline_diagnostics != show_inline_diagnostics
+                || &self.inline_diagnostic_newline_replacement != replace_newlines_with
+            {
                 self.show_inline_diagnostics = show_inline_diagnostics;
+                self.inline_diagnostic_newline_replacement = replace_newlines_with.clone();
                 self.refresh_inline_diagnostics(false, window, cx);
             }
 

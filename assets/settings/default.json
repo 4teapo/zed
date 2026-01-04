@@ -1120,6 +1120,9 @@
       // used to horizontally align inline diagnostics at some column. Lines
       // longer than this value will still push diagnostics further to the right.
       "min_column": 0,
+      // The string to replace newlines with, or `null` if only the first line
+      // should be shown.
+      "replace_newlines_with": null,
       // The minimum severity of the diagnostics to show inline.
       // Inherits editor's diagnostics' max severity settings when `null`.
       "max_severity": null

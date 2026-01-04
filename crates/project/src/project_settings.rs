@@ -213,7 +213,7 @@ fn default_lsp_diagnostics_pull_debounce_ms() -> u64 {
     50
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(default)]
 pub struct InlineDiagnosticsSettings {
     /// Whether or not to show inline diagnostics
@@ -238,6 +238,11 @@ pub struct InlineDiagnosticsSettings {
     ///
     /// Default: 0
     pub min_column: u32,
+    /// The string to replace newlines with, or `null` if only the first line
+    /// should be shown.
+    ///
+    /// Default: null
+    pub replace_newlines_with: Option<String>,
 
     pub max_severity: Option<DiagnosticSeverity>,
 }
@@ -278,6 +283,7 @@ impl Default for InlineDiagnosticsSettings {
             update_debounce_ms: default_inline_diagnostics_update_debounce_ms(),
             padding: default_inline_diagnostics_padding(),
             min_column: 0,
+            replace_newlines_with: None,
             max_severity: None,
         }
     }
